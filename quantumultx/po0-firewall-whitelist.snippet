@@ -1,0 +1,14 @@
+; po0 防火墙自动加白 · Quantumult X 片段
+;
+; QX 不支持脚本参数，token 需先写入持久化存储（二选一）：
+; 1) 在 QX 首页长按风车 → 数据中心/BoxJs，为 key `po0fw_tokens`
+;    写入 pgnfw_ token（多个英文逗号分割）；
+; 2) 或把脚本下载为本地文件，编辑开头的 INLINE_TOKENS 常量后引用本地路径。
+;
+; 添加方式：设置 → 引用 → 重写/任务，粘贴本文件 raw 链接。
+
+[task_local]
+*/2 * * * * https://raw.githubusercontent.com/reallinzc/po0fw/main/scripts/po0-firewall-whitelist.js, tag=po0 防火墙加白, img-url=checkmark.shield.system, enabled=true
+
+[filter_local]
+host, console.po0.com, direct

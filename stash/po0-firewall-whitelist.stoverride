@@ -1,0 +1,32 @@
+name: po0 防火墙自动加白
+desc: |-
+  调用 po0 防火墙 API 将本机当前出口 IP 加入白名单。支持多 token（英文逗号分割），
+  每 2 分钟 cron 自动触发，附手动刷新磁贴。安装后把下方两处 argument 的
+  tokens= 后面填上 pgnfw_ token。
+category: 工具
+icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Panel.png
+
+rules:
+  - DOMAIN,console.po0.com,DIRECT
+
+http:
+  mitm: []
+
+script-providers:
+  po0-fw:
+    url: https://raw.githubusercontent.com/reallinzc/po0fw/main/scripts/po0-firewall-whitelist.js
+    interval: 86400
+
+cron:
+  script:
+    - name: po0-fw
+      cron: '*/2 * * * *'
+      timeout: 60
+      argument: tokens=
+
+tiles:
+  - name: po0-fw
+    interval: 300
+    title: po0 防火墙加白
+    content: 点击刷新
+    argument: tokens=

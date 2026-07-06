@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>po0 防火墙自动加白 · Surge 模块</title>
+<title>po0 防火墙自动加白</title>
 <meta name="description" content="Surge 模块：自动把当前出口 IP 加入 po0 防火墙白名单，支持多 token、蜂窝优化、坑位记账。">
 <style>
 :root{
@@ -73,18 +73,24 @@ footer{color:var(--muted);font-size:.85rem;margin-top:40px;text-align:center}
 <div class="wrap">
 
 <header>
-  <h1>po0 防火墙自动加白 <span style="color:var(--muted)">· Surge 模块</span></h1>
+  <h1>po0 防火墙自动加白 <span style="color:var(--muted)">· Surge / Loon / Stash / QX …</span></h1>
   <p class="sub">自动把设备当前出口 IP 加入 po0 防火墙白名单。支持多台机器（多 token）、蜂窝网络优化、坑位记账，加白后才能连上开启了防火墙的 po0 机器。</p>
 </header>
 
-<div class="card" style="text-align:center;padding:32px 24px">
-  <a class="btn" href="surge:///install-module?url=https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fpo0-firewall-whitelist.sgmodule">⚡ 一键安装到 Surge</a>
-  <p class="hint">需要 Surge iOS / Surge Mac 已安装。点击后 Surge 会弹出模块安装确认。</p>
+<div class="card" style="padding:28px 24px">
+  <h2 style="justify-content:center">选择你的客户端一键安装</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0">
+    <a class="btn" href="surge:///install-module?url=https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fpo0-firewall-whitelist.sgmodule">Surge</a>
+    <a class="btn" href="loon://import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Floon%2Fpo0-firewall-whitelist.plugin">Loon</a>
+    <a class="btn" href="stash://install-override/https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fstash%2Fpo0-firewall-whitelist.stoverride">Stash</a>
+    <a class="btn" href="quantumult-x:///add-resource?remote-resource=%7B%22task_local%22%3A%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fscripts%2Fpo0-firewall-whitelist.js%2C%20tag%3Dpo0%20%E9%98%B2%E7%81%AB%E5%A2%99%E5%8A%A0%E7%99%BD%2C%20enabled%3Dtrue%22%5D%7D">Quantumult X</a>
+  </div>
+  <p class="hint" style="text-align:center">Shadowrocket / Egern：复制下方 Surge 模块地址，在客户端里「添加模块 / 从 URL 导入」。</p>
   <div class="copybox">
     <pre><code id="mod-url">https://raw.githubusercontent.com/reallinzc/po0fw/main/po0-firewall-whitelist.sgmodule</code></pre>
     <button onclick="navigator.clipboard.writeText(document.getElementById('mod-url').textContent).then(()=>this.textContent='已复制')">复制</button>
   </div>
-  <p class="hint">按钮无效时，复制上面的地址到 Surge → 模块 → 从 URL 安装。</p>
+  <p class="hint">其他载体：<a href="https://raw.githubusercontent.com/reallinzc/po0fw/main/loon/po0-firewall-whitelist.plugin">Loon 插件</a> · <a href="https://raw.githubusercontent.com/reallinzc/po0fw/main/stash/po0-firewall-whitelist.stoverride">Stash 覆写</a> · <a href="https://raw.githubusercontent.com/reallinzc/po0fw/main/quantumultx/po0-firewall-whitelist.snippet">QX 片段</a>，按钮无效时复制对应链接到客户端里从 URL 安装。</p>
 </div>
 
 <div class="card">
@@ -98,6 +104,13 @@ footer{color:var(--muted);font-size:.85rem;margin-top:40px;text-align:center}
   <pre><code>单台机器： pgnfw_xxxxxxxx
 多台机器： pgnfw_xxxxxxxx,pgnfw_yyyyyyyy</code></pre>
   <p>多个 token 用<strong>英文逗号</strong>分割，脚本会依次为每台机器加白。</p>
+  <table>
+    <tr><th>客户端</th><th>token 填哪里</th></tr>
+    <tr><td>Surge / Egern / Shadowrocket</td><td>模块参数 <code>tokens</code></td></tr>
+    <tr><td>Loon</td><td>插件设置 → <code>API tokens</code></td></tr>
+    <tr><td>Stash</td><td>覆写文件里两处 <code>argument: tokens=</code> 后填入</td></tr>
+    <tr><td>Quantumult X</td><td>持久化 key <code>po0fw_tokens</code>（BoxJs），或本地脚本改 <code>INLINE_TOKENS</code></td></tr>
+  </table>
 </div>
 
 <div class="card">
@@ -132,6 +145,8 @@ footer{color:var(--muted);font-size:.85rem;margin-top:40px;text-align:center}
   不会。模块自带 <code>DOMAIN,console.po0.com,DIRECT</code> 规则，API 请求始终直连，看到的是设备真实出口 IP。</p>
   <p><strong>Q: 家宽换 IP 后多久生效？</strong><br>
   网络切换事件是即时的；纯粹的公网 IP 变更最迟 2 分钟内被 cron 捕捉。</p>
+  <p><strong>Q: 支持哪些客户端？</strong><br>
+  Surge、Loon、Stash、Shadowrocket、Egern、Quantumult X。脚本内置环境兼容层；不支持网络接口检测的客户端按非蜂窝处理、不支持面板的客户端仅少一个手动刷新入口，核心加白逻辑一致。</p>
   <p><strong>Q: 支持几台 po0 机器？</strong><br>
   不限，tokens 逗号分割即可，面板按 #1 #2 … 分行显示。</p>
 </div>

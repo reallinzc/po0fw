@@ -13,16 +13,16 @@
 - **面板**：显示白名单 IP 与坑位占用（不显示 token），蜂窝加白的 IP 标 📶，当前出口标 ←。
 - **安静**：KV 记录状态，仅在失败、限频或消耗新坑位时通知。
 
-## 安装
+## 支持的客户端
 
-```
-surge:///install-module?url=https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fpo0-firewall-whitelist.sgmodule
-```
+| 客户端 | 载体 | token 配置 |
+|---|---|---|
+| Surge | `po0-firewall-whitelist.sgmodule` | 模块参数 `tokens` |
+| Egern / Shadowrocket | 同上（导入 Surge 模块） | 模块参数 `tokens` |
+| Loon | `loon/po0-firewall-whitelist.plugin` | 插件设置 `API tokens` |
+| Stash | `stash/po0-firewall-whitelist.stoverride` | 覆写内 `argument: tokens=` |
+| Quantumult X | `quantumultx/po0-firewall-whitelist.snippet` | 存储 key `po0fw_tokens`（BoxJs）或脚本内 `INLINE_TOKENS` |
 
-安装后在模块参数 `tokens` 填入 `pgnfw_xxx`（多个用 `,` 分割）。token 只保存在你自己的 Surge 配置里，模块与本仓库不包含、不上传任何 token。
+同一份 `scripts/po0-firewall-whitelist.js`，内置环境兼容层（`$httpClient`/`$task.fetch`、`$persistentStore`/`$prefs`、`$notification`/`$notify`）。不支持 `$network` 的客户端按非蜂窝处理；不支持面板的客户端仅少一个手动刷新入口。
 
-## 文件
-
-- `po0-firewall-whitelist.sgmodule` — Surge 模块（规则 + cron/事件/面板脚本挂载）
-- `scripts/po0-firewall-whitelist.js` — 加白脚本
-- `web/index.html` — 教程页源码（部署于 po0fw.rlyio.com）
+一键安装入口见教程页 <https://po0fw.rlyio.com/>。token 只保存在你自己的客户端配置里，本仓库不包含、不上传任何 token。
