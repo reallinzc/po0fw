@@ -4,7 +4,8 @@
  *
  * GET  /firewall.php  只读状态：{enabled, whitelist[], limit, currentIp}
  * POST /firewall.php  把"当前请求源 IP"加入白名单（占一个坑位）
- * API 无删除能力（DELETE/PUT 405，POST 不接受指定 IP），坑位只能省着用。
+ * API 无删除接口（DELETE/PUT 405，POST 不接受指定 IP）；白名单写满后按
+ * 写入时间先进先出自动淘汰最旧 IP —— 不必要的写入会挤掉常用 IP。
  *
  * 策略：
  * - GET 先查，currentIp 已在白名单则跳过 POST（零坑位消耗）。
