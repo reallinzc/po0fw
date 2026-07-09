@@ -10,11 +10,18 @@
  *
  * 策略：
  * - 每次直接 POST 上报当前出口 IP，蜂窝与 WiFi/有线同等处理。
- * - 被 FIFO 淘汰挤出白名单的设备，由它自己的 cron/事件几分钟内自动补回。
+ * - 默认 slotless 写入：按 updated_at 触发 LRU 淘汰，被挤出的设备靠自己的
+ *   cron/事件几分钟内自动补回。
+ * - 可选固定槽位：token 后加 @N（如 pgnfw_xxx@0）→ POST .../add?slot=N，
+ *   把本机 IP 钉在槽位 N，**永不被 LRU 淘汰**。槽位写入语义：
+ *     · 本机 IP 已在该槽位 → 刷新 updated_at；
+ *     · 槽位有旧 IP → 行级顶替，旧 IP 丢弃；
+ *     · 本机 IP 已 slotless → 删 slotless 行升级到该槽位；
+ *     · 本机 IP 已占用**别的**槽位 → 403 冲突，需先去 UI 删旧槽位（脚本会报 ❌）。
  * - 蜂窝（主接口 pdp_ip*）写入的 IP 仅做 📶 标记，便于面板识别。
  *
  * token 来源（优先级从高到低）：
- * 1. argument: tokens=<pgnfw_xxx>,<pgnfw_yyy>（Surge/Loon/Stash/Egern 模块参数）
+ * 1. argument: tokens=<pgnfw_xxx>[@槽位],<pgnfw_yyy>（Surge/Loon/Stash/Egern 模块参数）
  * 2. 持久化存储 key "po0fw_tokens"（Quantumult X 等不支持参数的客户端，
  *    可用 BoxJs 或一次性脚本写入）
  * 3. 下面的 INLINE_TOKENS 常量（自己维护脚本副本时直接填这里）
@@ -55,7 +62,7 @@ function httpRequest(method, opts) {
       opts.method = method;
       $task.fetch(opts).then(
         function (resp) {
-          resolve({ body: resp.body });
+          resolve({ body: resp.body, status: resp.statusCode });
         },
         function (err) {
           resolve({ error: String((err && err.error) || err) });
@@ -65,7 +72,7 @@ function httpRequest(method, opts) {
       var fn = method === "POST" ? $httpClient.post : $httpClient.get;
       fn(opts, function (error, response, body) {
         if (error) resolve({ error: String(error) });
-        else resolve({ body: body });
+        else resolve({ body: body, status: response && (response.status || response.statusCode) });
       });
     } else {
       resolve({ error: "unsupported client" });
@@ -139,38 +146,56 @@ function readHistory(key) {
   }
 }
 
-function apiCall(token) {
-  // token 走 URL 路径，命中 /add 即把当前出口 IP 加白
+function apiCall(token, slot) {
+  // token 走 URL 路径，命中 /add 即把当前出口 IP 加白；带 slot 则钉固定槽位
+  var url = API_BASE + encodeURIComponent(token) + "/add";
+  if (slot !== null && slot !== undefined && slot !== "") {
+    url += "?slot=" + encodeURIComponent(slot);
+  }
   return httpRequest("POST", {
-    url: API_BASE + encodeURIComponent(token) + "/add",
+    url: url,
     headers: { "Content-Type": "application/json" },
     body: "",
     timeout: 15,
   }).then(function (r) {
     if (r.error) return { error: r.error };
+    var data = null;
     try {
-      var data = JSON.parse(r.body);
-      // whitelist 元素为 {ip, slot} 对象（旧版曾是纯 IP 字符串），统一成 IP 数组
-      data.whitelist = (Array.isArray(data.whitelist) ? data.whitelist : []).map(function (e) {
-        return e && typeof e === "object" ? e.ip : e;
-      });
-      data.applied =
-        data.enabled === true && data.whitelist.indexOf(data.currentIp) !== -1;
-      return data;
-    } catch (e) {
-      return { error: "响应异常: " + String(r.body).slice(0, 80) };
+      data = JSON.parse(r.body);
+    } catch (e) {}
+    // 带槽位写入且本机 IP 已占用别的槽位 → 服务端 403 冲突，需去 UI 删旧槽位
+    if (r.status === 403) {
+      return {
+        error: "槽位冲突：本机 IP 已在其它槽位，请先去 UI 删除",
+        conflict: true,
+        currentIp: data && data.currentIp,
+      };
     }
+    if (!data) return { error: "响应异常: " + String(r.body).slice(0, 80) };
+    // whitelist 元素为 {ip, slot} 对象（旧版曾是纯 IP 字符串）：记下 ip→slot 再摊平成 IP 数组
+    var raw = Array.isArray(data.whitelist) ? data.whitelist : [];
+    data.slotOf = {};
+    raw.forEach(function (e) {
+      if (e && typeof e === "object" && e.slot !== null && e.slot !== undefined) {
+        data.slotOf[e.ip] = e.slot;
+      }
+    });
+    data.whitelist = raw.map(function (e) {
+      return e && typeof e === "object" ? e.ip : e;
+    });
+    data.applied = data.enabled === true && data.whitelist.indexOf(data.currentIp) !== -1;
+    return data;
   });
 }
 
-function ensureWhitelisted(token, index) {
+function ensureWhitelisted(item, index) {
   var kvState = STORE_PREFIX + index;
   var kvHist = STORE_PREFIX + "hist_" + index;
   var cellular = onCellular();
-  var ctx = { kvState: kvState, kvHist: kvHist };
+  var ctx = { kvState: kvState, kvHist: kvHist, slot: item.slot };
 
   // 服务端对重复 IP 幂等，直接请求 /add 即可，无需先查
-  return apiCall(token).then(function (st) {
+  return apiCall(item.token, item.slot).then(function (st) {
     if (st.applied) {
       var hist = readHistory(kvHist);
       var last = hist.length ? hist[hist.length - 1] : null;
@@ -187,7 +212,8 @@ function ensureWhitelisted(token, index) {
 // 每 token 一行：不含 token，只含白名单/坑位信息；蜂窝加的 IP 标 📶
 function describe(index, ctx) {
   var st = ctx.st;
-  var head = "#" + (index + 1) + " ";
+  var pin = ctx.slot !== null && ctx.slot !== undefined && ctx.slot !== "" ? " 📌" + ctx.slot : "";
+  var head = "#" + (index + 1) + pin + " ";
   if (st.error) return head + "❌ " + st.error;
   if (st.enabled === false) return head + "⚠️ 防火墙未启用";
   if (!st.applied) return head + "❌ 加白未生效 " + st.whitelist.length + "/" + st.limit;
@@ -197,15 +223,18 @@ function describe(index, ctx) {
   hist.forEach(function (e) {
     if (e.src === "cell") cellIps[e.ip] = true;
   });
+  var slotOf = st.slotOf || {};
   var ips = st.whitelist
     .map(function (ip) {
-      return ip + (cellIps[ip] ? " 📶" : "") + (ip === st.currentIp ? " ←" : "");
+      var slotTag = slotOf[ip] !== undefined ? " 📌" + slotOf[ip] : "";
+      return ip + slotTag + (cellIps[ip] ? " 📶" : "") + (ip === st.currentIp ? " ←" : "");
     })
     .join("\n    ");
   return head + "✅ " + st.whitelist.length + "/" + st.limit + "\n    " + ips;
 }
 
-// 分隔符兼容 , | ; 、；非 pgnfw_ 开头的段（如未修改的占位提示）直接忽略
+// 分隔符兼容 , | ; 、；非 pgnfw_ 开头的段（如未修改的占位提示）直接忽略。
+// 每段可带可选 @槽位 后缀：pgnfw_xxx@0 → 钉槽位 0；无后缀则 slotless。
 var tokens = (getArgumentTokens() || storeRead(TOKENS_KEY) || INLINE_TOKENS || "")
   .split(/[,|;、\s]+/)
   .map(function (s) {
@@ -213,6 +242,12 @@ var tokens = (getArgumentTokens() || storeRead(TOKENS_KEY) || INLINE_TOKENS || "
   })
   .filter(function (s) {
     return s.indexOf("pgnfw_") === 0;
+  })
+  .map(function (s) {
+    var at = s.indexOf("@");
+    if (at === -1) return { token: s, slot: null };
+    var n = parseInt(s.slice(at + 1), 10);
+    return { token: s.slice(0, at), slot: isNaN(n) ? null : n };
   });
 
 if (tokens.length === 0) {

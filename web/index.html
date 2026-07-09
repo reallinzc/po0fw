@@ -186,6 +186,7 @@ footer{
   <pre><code>curl -X POST https://124.221.69.228/api/firewall/<span class="tok">pgnfw_你复制到的这一整串</span>/add</code></pre>
   <p>把 <code class="tok">pgnfw_…</code> 那一整串提取出来就是本机 token。一台机器对应一个 token，多个 token 用<strong>英文逗号</strong>分割。</p>
   <div class="tip warn"><strong>🔑 token = 该机器的加白凭证</strong>，请妥善保管、不要公开分享。它只需填进你自己的客户端配置。</div>
+  <div class="tip"><strong>进阶：固定槽位</strong>。默认加白按最近使用时间自动淘汰最旧 IP。若想让某台机器（如家宽出口）常驻不被淘汰，在它的 token 后加 <code>@槽位号</code>，例如 <code class="tok">pgnfw_你的token@0</code>——脚本会请求 <code>…/add?slot=0</code> 把它钉在 0 号槽位。注意每个 IP 只能占一个槽位，换槽前需先在面板删掉旧槽位。</div>
 
   <h3>2. 选择你的客户端安装</h3>
   <div class="clients">
