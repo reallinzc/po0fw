@@ -1,0 +1,30 @@
+name: po0 防火墙自动加白
+description: 调用 po0 防火墙 API 将本机当前出口 IP 加入白名单。支持多 token（英文逗号分割，一台机器一个），每 10 分钟 cron 与网络变化时自动加白。加白 API 走直连。
+author: reallinzc
+homepage: https://github.com/reallinzc/po0fw
+
+# 安装后在模块参数 tokens 填入 pgnfw_ token（多台机器用英文逗号分割，可加 @槽位 固定坑位）。
+compat_arguments:
+  tokens: ""
+
+# 加白 API 必须直连，确保服务端看到的是本机真实出口 IP 而不是代理出口
+rules:
+  - ip_cidr:
+      match: 124.221.69.228/32
+      policy: DIRECT
+      no_resolve: true
+
+scriptings:
+  - schedule:
+      name: po0-fw-cron
+      cron: "*/10 * * * *"
+      script_url: https://raw.githubusercontent.com/reallinzc/po0fw/main/egern/po0-firewall-whitelist.js
+      timeout: 60
+      env:
+        tokens: "{{{tokens}}}"
+  - network:
+      name: po0-fw-network
+      script_url: https://raw.githubusercontent.com/reallinzc/po0fw/main/egern/po0-firewall-whitelist.js
+      timeout: 60
+      env:
+        tokens: "{{{tokens}}}"

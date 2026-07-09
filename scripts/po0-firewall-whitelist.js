@@ -1,6 +1,7 @@
 /*
  * po0 防火墙自动加白
- * 兼容：Surge / Stash / Shadowrocket / Egern / Loon / Quantumult X
+ * 兼容：Surge / Stash / Shadowrocket / Loon / Quantumult X
+ * （Egern 运行模型不同，用独立的 egern/po0-firewall-whitelist.js）
  *
  * POST /api/firewall/<token>/add  把"当前请求源 IP"加入白名单，并回显
  *   {enabled, whitelist:[{ip,slot}], limit, currentIp}。token 走 URL 路径，无需
@@ -21,7 +22,7 @@
  * - 蜂窝（主接口 pdp_ip*）写入的 IP 仅做 📶 标记，便于面板识别。
  *
  * token 来源（优先级从高到低）：
- * 1. argument: tokens=<pgnfw_xxx>[@槽位],<pgnfw_yyy>（Surge/Loon/Stash/Egern 模块参数）
+ * 1. argument: tokens=<pgnfw_xxx>[@槽位],<pgnfw_yyy>（Surge/Loon/Stash 模块参数）
  * 2. 持久化存储 key "po0fw_tokens"（Quantumult X 等不支持参数的客户端，
  *    可用 BoxJs 或一次性脚本写入）
  * 3. 下面的 INLINE_TOKENS 常量（自己维护脚本副本时直接填这里）
@@ -37,7 +38,7 @@ var HIST_WINDOW_MS = 24 * 3600 * 1000; // 📶 标记的记账窗口
 /* ---------- 环境兼容层 ---------- */
 
 var isQX = typeof $task !== "undefined";
-var isSurgeLike = typeof $httpClient !== "undefined"; // Surge/Stash/Shadowrocket/Egern/Loon
+var isSurgeLike = typeof $httpClient !== "undefined"; // Surge/Stash/Shadowrocket/Loon
 
 function storeRead(key) {
   if (isQX) return $prefs.valueForKey(key);
