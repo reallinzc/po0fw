@@ -5,7 +5,10 @@
 ;    写入 pgnfw_ token（多个英文逗号分割）；
 ; 2) 或把脚本下载为本地文件，编辑开头的 INLINE_TOKENS 常量后引用本地路径。
 ;
-; 添加方式：设置 → 引用 → 重写/任务，粘贴本文件 raw 链接。
+; 安装方式（QX 无法远程订阅定时任务，必须手动放进本地配置）：
+; - 把下面 [task_local] 的任务行加进你 QX 配置的 [task_local] 段；
+; - 可选把 [filter_local] 的 ip-cidr 行加进 [filter_local] 段（或作为「分流」引用）。
+; 任务行内引用的远程 .js 链接是允许的，只是这一行本身必须写在本地配置里。
 
 [task_local]
 */10 * * * * https://raw.githubusercontent.com/reallinzc/po0fw/main/scripts/po0-firewall-whitelist.js, tag=po0 防火墙加白, img-url=checkmark.shield.system, enabled=true

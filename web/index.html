@@ -221,7 +221,7 @@ footer{
         <div><b>Stash</b><span>iOS · stoverride</span></div>
       </div>
       <div class="install">
-        <a class="btn brand" href="stash://install-override/https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fstash%2Fpo0-firewall-whitelist.stoverride">一键安装</a>
+        <a class="btn brand" href="stash://install-override?url=https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fstash%2Fpo0-firewall-whitelist.stoverride">一键安装</a>
         <button class="copy" data-url="https://raw.githubusercontent.com/reallinzc/po0fw/main/stash/po0-firewall-whitelist.stoverride">复制链接</button>
       </div>
       <p class="note">安装后编辑覆写，把两处 <code>argument: tokens=</code> 补全。附手动刷新磁贴。</p>
@@ -233,10 +233,9 @@ footer{
         <div><b>Quantumult X</b><span>iOS · task 片段</span></div>
       </div>
       <div class="install">
-        <a class="btn brand" href="quantumult-x:///add-resource?remote-resource=%7B%22task_local%22%3A%5B%22https%3A%2F%2Fraw.githubusercontent.com%2Freallinzc%2Fpo0fw%2Fmain%2Fscripts%2Fpo0-firewall-whitelist.js%2C%20tag%3Dpo0%20%E9%98%B2%E7%81%AB%E5%A2%99%E5%8A%A0%E7%99%BD%2C%20enabled%3Dtrue%22%5D%7D">一键安装</a>
-        <button class="copy" data-url="https://raw.githubusercontent.com/reallinzc/po0fw/main/quantumultx/po0-firewall-whitelist.snippet">复制片段</button>
+        <button class="copy" style="flex:1" data-url="https://raw.githubusercontent.com/reallinzc/po0fw/main/quantumultx/po0-firewall-whitelist.snippet">复制片段链接</button>
       </div>
-      <p class="note">QX 不支持脚本参数：用 BoxJs 给 key <code>po0fw_tokens</code> 写入 token，或本地脚本改 <code>INLINE_TOKENS</code>。</p>
+      <p class="note">QX 无法远程订阅定时任务，需手动装：打开 QX 配置文件，把片段里的任务行加进 <code>[task_local]</code>；可选把 <code>ip-cidr, 124.221.69.228/32, direct, no-resolve</code> 加进 <code>[filter_local]</code>。QX 不支持脚本参数：用 BoxJs 给 key <code>po0fw_tokens</code> 写入 token，或本地脚本改 <code>INLINE_TOKENS</code>。</p>
     </div>
 
     <div class="client">
