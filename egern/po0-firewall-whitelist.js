@@ -10,6 +10,8 @@
  *   出口 IP 加白。token 走 URL 路径；服务端对已在白名单的 IP 幂等；写满 5 个后按
  *   写入时间 FIFO 淘汰（带 slot 的行永不淘汰）。token 来自模块参数 tokens
  *   （ctx.env.tokens），可带 @槽位 后缀（pgnfw_xxx@0）钉固定坑位。
+ * 加白粒度为 C 段（/24）：服务端把 whitelist 条目和 currentIp 归一化成
+ *   x.x.x.0/24 回显，同段换 IP 不产生新写入；匹配用 sameC24() 兼容混杂格式。
  */
 
 const API_BASE = "https://124.221.69.228/api/firewall/"; // + <token> + "/add"
@@ -92,6 +94,7 @@ async function apiCall(ctx, token, slot) {
     };
   }
   if (!data) return { error: "响应异常: " + String(text).slice(0, 80) };
+  // 服务端按 C 段（/24）加白，whitelist 与 currentIp 都可能是 x.x.x.0/24
   // whitelist 元素为 {ip, slot} 对象：记下 ip→slot 再摊平成 IP 数组
   const raw = Array.isArray(data.whitelist) ? data.whitelist : [];
   data.slotOf = {};
@@ -103,8 +106,26 @@ async function apiCall(ctx, token, slot) {
   data.whitelist = raw.map(function (e) {
     return e && typeof e === "object" ? e.ip : e;
   });
-  data.applied = data.enabled === true && data.whitelist.indexOf(data.currentIp) !== -1;
+  data.applied =
+    data.enabled === true &&
+    data.whitelist.some(function (ip) {
+      return sameC24(ip, data.currentIp);
+    });
   return data;
+}
+
+// 任一侧为 /24 段时按前三段比较，两侧均为精确 IP 时要求全等
+function sameC24(a, b) {
+  if (!a || !b) return false;
+  a = String(a);
+  b = String(b);
+  if (a === b) return true;
+  if (a.slice(-3) !== "/24" && b.slice(-3) !== "/24") return false;
+  const pa = a.replace("/24", "").split(".");
+  const pb = b.replace("/24", "").split(".");
+  return (
+    pa.length === 4 && pb.length === 4 && pa[0] === pb[0] && pa[1] === pb[1] && pa[2] === pb[2]
+  );
 }
 
 async function ensure(ctx, item, index, cellular) {
@@ -140,7 +161,7 @@ function describe(ctx, index, c) {
   const ips = st.whitelist
     .map(function (ip) {
       const slotTag = slotOf[ip] !== undefined ? " 📌" + slotOf[ip] : "";
-      return ip + slotTag + (cellIps[ip] ? " 📶" : "") + (ip === st.currentIp ? " ←" : "");
+      return ip + slotTag + (cellIps[ip] ? " 📶" : "") + (sameC24(ip, st.currentIp) ? " ←" : "");
     })
     .join("\n    ");
   return head + "✅ " + st.whitelist.length + "/" + st.limit + "\n    " + ips;

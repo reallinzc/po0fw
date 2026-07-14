@@ -7,6 +7,9 @@
  *   {enabled, whitelist:[{ip,slot}], limit, currentIp}。token 走 URL 路径，无需
  *   Authorization 头。服务端对已在白名单的 IP 做幂等处理（重复请求不
  *   重复占坑、不推进淘汰队列），因此这里每次直接无脑请求。
+ * 加白粒度为 C 段（/24）：服务端把 whitelist 条目和 currentIp 都归一化成
+ *   x.x.x.0/24 回显；同段内换 IP 不产生新写入。脚本用 sameC24() 做匹配，
+ *   兼容精确 IP 与 /24 段混杂的新旧格式。
  * 白名单写满后按写入时间先进先出自动淘汰最旧 IP；API 无删除接口。
  *
  * 策略：
@@ -135,6 +138,21 @@ function finish(title, content, allOk) {
 
 /* ---------- 业务逻辑 ---------- */
 
+// 服务端按 C 段（/24）加白，条目可能是精确 IP 或 x.x.x.0/24。
+// 任一侧为 /24 段时按前三段比较，两侧均为精确 IP 时要求全等。
+function sameC24(a, b) {
+  if (!a || !b) return false;
+  a = String(a);
+  b = String(b);
+  if (a === b) return true;
+  if (a.slice(-3) !== "/24" && b.slice(-3) !== "/24") return false;
+  var pa = a.replace("/24", "").split(".");
+  var pb = b.replace("/24", "").split(".");
+  return (
+    pa.length === 4 && pb.length === 4 && pa[0] === pb[0] && pa[1] === pb[1] && pa[2] === pb[2]
+  );
+}
+
 function readHistory(key) {
   try {
     var h = JSON.parse(storeRead(key) || "[]");
@@ -184,7 +202,11 @@ function apiCall(token, slot) {
     data.whitelist = raw.map(function (e) {
       return e && typeof e === "object" ? e.ip : e;
     });
-    data.applied = data.enabled === true && data.whitelist.indexOf(data.currentIp) !== -1;
+    data.applied =
+      data.enabled === true &&
+      data.whitelist.some(function (ip) {
+        return sameC24(ip, data.currentIp);
+      });
     return data;
   });
 }
@@ -228,7 +250,7 @@ function describe(index, ctx) {
   var ips = st.whitelist
     .map(function (ip) {
       var slotTag = slotOf[ip] !== undefined ? " 📌" + slotOf[ip] : "";
-      return ip + slotTag + (cellIps[ip] ? " 📶" : "") + (ip === st.currentIp ? " ←" : "");
+      return ip + slotTag + (cellIps[ip] ? " 📶" : "") + (sameC24(ip, st.currentIp) ? " ←" : "");
     })
     .join("\n    ");
   return head + "✅ " + st.whitelist.length + "/" + st.limit + "\n    " + ips;
