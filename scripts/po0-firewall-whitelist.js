@@ -73,8 +73,16 @@ function httpRequest(method, opts) {
         }
       );
     } else if (isSurgeLike) {
+      // Loon 的 $httpClient.post/get 的 timeout 单位为毫秒 (ms)，而 Surge / Stash 为秒 (s)
+      // 若传入数值 <= 500 则自动转为毫秒以兼容 Loon
+      var reqOpts = Object.assign({}, opts);
+      if (typeof $loon !== "undefined" || (typeof $environment !== "undefined" && $environment["target-platform"] === "Loon")) {
+        if (reqOpts.timeout && reqOpts.timeout <= 500) {
+          reqOpts.timeout = reqOpts.timeout * 1000;
+        }
+      }
       var fn = method === "POST" ? $httpClient.post : $httpClient.get;
-      fn(opts, function (error, response, body) {
+      fn(reqOpts, function (error, response, body) {
         if (error) resolve({ error: String(error) });
         else resolve({ body: body, status: response && (response.status || response.statusCode) });
       });
